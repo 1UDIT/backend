@@ -1,0 +1,7 @@
+OrderID,Date,Product,Category,Quantity,Price,Customer,Region
+1001,2024-01-10,Laptop,Electronics,2,50000,Rahul,North
+1002,2024-01-12,Phone,Electronics,3,20000,Amit,West
+1003,2024-02-05,Chair,Furniture,5,3000,Sneha,South
+1004,2024-02-15,Table,Furniture,2,7000,Neha,East
+1005,2024-03-01,Laptop,Electronics,1,50000,Rahul,North
+1006,2024-03-10,Phone,Electronics,4,20000,Arjun,West
