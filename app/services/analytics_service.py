@@ -1,7 +1,9 @@
 import pandas as pd
 from io import BytesIO
+import numpy as np 
+from app.utils.db import analytics_collection
 
-async def process_data(file):
+async def process_data(file, username: str):
     contents = await file.read()
     df = pd.read_csv(BytesIO(contents))
 
@@ -12,6 +14,7 @@ async def process_data(file):
     total_revenue = float(df["Revenue"].sum())
     total_orders = int(df["OrderID"].nunique())
     avg_order_value = float(df["Revenue"].mean())
+    revenue_std = float(np.std(df["Revenue"]))
 
     monthly_sales = (
         df.groupby("Month")["Revenue"]
@@ -29,10 +32,21 @@ async def process_data(file):
         .to_dict(orient="records")
     )
 
-    return {
+    filename = file.filename
+
+    result = {
+        "username": username,
+        "filename": filename,
         "total_revenue": total_revenue,
         "total_orders": total_orders,
         "avg_order_value": avg_order_value,
         "monthly_sales": monthly_sales,
-        "top_products": top_products
+        "top_products": top_products,
+        "revenue_volatility": revenue_std,
     }
+
+    inserted = await analytics_collection.insert_one(result)
+
+    result["_id"] = str(inserted.inserted_id)
+
+    return result
