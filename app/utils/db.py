@@ -29,6 +29,7 @@ try:
 
     db = client[DB_NAME]
     analytics_collection = db["analytics"]
+    users_collection = db["users"]
 
     print("✅ MongoDB connection initialized")
 
