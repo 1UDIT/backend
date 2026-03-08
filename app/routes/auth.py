@@ -8,15 +8,16 @@ router = APIRouter()
 
 
 class LoginRequest(BaseModel):
-    username: str
+    userName: str
     password: str
 
 
-@router.post("/login")
+@router.post("/")
 async def login(data: LoginRequest):
+    print("data", data)
 
     user = await users_collection.find_one(
-        {"username": data.username}
+        {"userName": data.userName}
     )
 
     if not user:
@@ -26,7 +27,7 @@ async def login(data: LoginRequest):
         raise HTTPException(status_code=401, detail="Invalid password")
 
     return {
-        "username": user["username"],
+        "userName": user["userName"],
         "role": user["role"]
     }
 

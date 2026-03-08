@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from app.routes.analytics import router as analytics_router
 from app.routes.createUser import router as createUser
+from app.routes.auth import router as login, admin_data
 from app.utils.db import client
 
 
@@ -11,6 +12,8 @@ app = FastAPI()
 
 app.include_router(analytics_router, prefix="/analytics")
 app.include_router(createUser, prefix="/createUser")
+app.include_router(login, prefix="/login")
+# app.include_router(admin_data, prefix="/login")
 
 app.add_middleware(
     CORSMiddleware,
