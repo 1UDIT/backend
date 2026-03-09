@@ -2,8 +2,10 @@ import pandas as pd
 from io import BytesIO
 import numpy as np 
 from app.utils.db import analytics_collection
+from datetime import datetime
 
 async def process_data(file, username: str):
+
     contents = await file.read()
     df = pd.read_csv(BytesIO(contents))
 
@@ -34,6 +36,7 @@ async def process_data(file, username: str):
 
     filename = file.filename
 
+    # Create result first
     result = {
         "username": username,
         "filename": filename,
@@ -43,10 +46,24 @@ async def process_data(file, username: str):
         "monthly_sales": monthly_sales,
         "top_products": top_products,
         "revenue_volatility": revenue_std,
+        "uploaded_at": datetime.utcnow()
     }
 
-    inserted = await analytics_collection.insert_one(result)
+    # Check existing file
+    existing = await analytics_collection.find_one({
+        "username": username,
+        "filename": filename
+    })
 
-    result["_id"] = str(inserted.inserted_id)
+    if existing:
+        await analytics_collection.update_one(
+            {"_id": existing["_id"]},
+            {"$set": result}
+        )
+        result["_id"] = str(existing["_id"])
+
+    else:
+        inserted = await analytics_collection.insert_one(result)
+        result["_id"] = str(inserted.inserted_id)
 
     return result

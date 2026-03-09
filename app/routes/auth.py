@@ -28,7 +28,7 @@ async def login(data: LoginRequest):
 
     return {
         "userName": user["userName"],
-        "role": user["role"]
+        "role": user["role"],
     }
 
 @router.get("/admin/data")
@@ -46,3 +46,27 @@ async def admin_data(role: str):
         doc["_id"] = str(doc["_id"])
 
     return data
+
+from fastapi import Query
+
+@router.get("/files")
+async def get_files(username: str = Query(...), role: str = Query(...)):
+
+    # Admin can see all files
+    if role == "admin":
+        files = await analytics_collection.find(
+            {},
+            {"filename": 1, "uploaded_at": 1, "username": 1}
+        ).to_list(100)
+
+    # Normal user sees only their files
+    else:
+        files = await analytics_collection.find(
+            {"username": username},
+            {"filename": 1, "uploaded_at": 1}
+        ).to_list(100)
+
+    for f in files:
+        f["_id"] = str(f["_id"])
+
+    return files
