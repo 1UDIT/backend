@@ -1,8 +1,10 @@
 import pandas as pd
 from io import BytesIO
-import numpy as np 
+import numpy as np
 from app.utils.db import analytics_collection
 from datetime import datetime
+from fastapi import HTTPException
+
 
 async def process_data(file, username: str):
 
@@ -36,7 +38,6 @@ async def process_data(file, username: str):
 
     filename = file.filename
 
-    # Create result first
     result = {
         "username": username,
         "filename": filename,
@@ -49,21 +50,34 @@ async def process_data(file, username: str):
         "uploaded_at": datetime.utcnow()
     }
 
-    # Check existing file
+    # Check if file already exists
     existing = await analytics_collection.find_one({
         "username": username,
         "filename": filename
     })
 
+    # If file exists → update (doesn't count toward limit)
     if existing:
         await analytics_collection.update_one(
             {"_id": existing["_id"]},
             {"$set": result}
         )
         result["_id"] = str(existing["_id"])
+        return result
 
-    else:
-        inserted = await analytics_collection.insert_one(result)
-        result["_id"] = str(inserted.inserted_id)
+    # Count how many files user already has
+    file_count = await analytics_collection.count_documents({
+        "username": username
+    })
+
+    if file_count >= 3:
+        raise HTTPException(
+            status_code=400,
+            detail="Upload limit reached. Maximum 3 files allowed."
+        )
+
+    # Insert new dataset
+    inserted = await analytics_collection.insert_one(result)
+    result["_id"] = str(inserted.inserted_id)
 
     return result
