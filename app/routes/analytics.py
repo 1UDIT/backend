@@ -7,9 +7,10 @@ router = APIRouter()
 @router.post("/upload")
 async def upload_file(
     file: UploadFile = File(...),
-    username: str = Form(...)
+    username: str = Form(...),
+    role: str = Form(...)
 ):
-    result = await process_data(file, username)
+    result = await process_data(file, username, role)
     return result
 
 
@@ -29,8 +30,7 @@ async def get_data(dataset_id: str):
     return data
 
 @router.delete("/delete/{dataset_id}")
-async def delete_dataset(dataset_id: str, username: str, role: str):
-
+async def delete_dataset(dataset_id: str, username: str, role: str): 
     if role == "admin":
         result = await analytics_collection.delete_one({
             "_id": ObjectId(dataset_id)

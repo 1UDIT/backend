@@ -6,7 +6,7 @@ from datetime import datetime
 from fastapi import HTTPException
 
 
-async def process_data(file, username: str):
+async def process_data(file, username: str, role:str):
 
     contents = await file.read()
     df = pd.read_csv(BytesIO(contents))
@@ -47,7 +47,8 @@ async def process_data(file, username: str):
         "monthly_sales": monthly_sales,
         "top_products": top_products,
         "revenue_volatility": revenue_std,
-        "uploaded_at": datetime.utcnow()
+        "uploaded_at": datetime.utcnow(),
+        "role":role
     }
 
     # Check if file already exists
@@ -58,19 +59,19 @@ async def process_data(file, username: str):
 
     # If file exists → update (doesn't count toward limit)
     if existing:
-        await analytics_collection.update_one(
-            {"_id": existing["_id"]},
-            {"$set": result}
-        )
-        result["_id"] = str(existing["_id"])
-        return result
+        # await analytics_collection.update_one(
+        #     {"_id": existing["_id"]},
+        #     {"$set": result}
+        # )
+        # result["_id"] = str(existing["_id"])
+        return "file name exist"
 
     # Count how many files user already has
     file_count = await analytics_collection.count_documents({
         "username": username
     })
 
-    if file_count >= 3:
+    if role != "admin" and file_count >= 3:
         raise HTTPException(
             status_code=400,
             detail="Upload limit reached. Maximum 3 files allowed."

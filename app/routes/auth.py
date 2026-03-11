@@ -56,14 +56,14 @@ async def get_files(username: str = Query(...), role: str = Query(...)):
     if role == "admin":
         files = await analytics_collection.find(
             {},
-            {"filename": 1, "uploaded_at": 1, "username": 1}
+            {"filename": 1, "uploaded_at": 1, "username": 1, "role":1}
         ).to_list(100)
 
     # Normal user sees only their files
     else:
         files = await analytics_collection.find(
             {"username": username},
-            {"filename": 1, "uploaded_at": 1}
+            {"filename": 1, "uploaded_at": 1, "role":1, "username": username}
         ).to_list(100)
 
     for f in files:
