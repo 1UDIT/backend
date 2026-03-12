@@ -1,20 +1,23 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request, Query
 from pydantic import BaseModel
-from app.utils.db import users_collection
-from fastapi import HTTPException
-from app.utils.db import analytics_collection
+from app.utils.db import users_collection, analytics_collection 
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
-router = APIRouter()
+limiter = Limiter(key_func=get_remote_address)
+
+router = APIRouter() 
+
+
 
 
 class LoginRequest(BaseModel):
     userName: str
     password: str
 
-
 @router.post("/")
-async def login(data: LoginRequest):
-    print("data", data)
+@limiter.limit("5/minute")
+async def login(request: Request, data: LoginRequest): 
 
     user = await users_collection.find_one(
         {"userName": data.userName}
@@ -31,23 +34,22 @@ async def login(data: LoginRequest):
         "role": user["role"],
     }
 
-@router.get("/admin/data")
-async def admin_data(role: str):
+# @router.get("/admin/data")
+# async def admin_data(role: str):
 
-    if role != "admin":
-        raise HTTPException(
-            status_code=403,
-            detail="Access denied"
-        )
+#     if role != "admin":
+#         raise HTTPException(
+#             status_code=403,
+#             detail="Access denied"
+#         )
 
-    data = await analytics_collection.find().to_list(100)
+#     data = await analytics_collection.find().to_list(100)
 
-    for doc in data:
-        doc["_id"] = str(doc["_id"])
+#     for doc in data:
+#         doc["_id"] = str(doc["_id"])
 
-    return data
-
-from fastapi import Query
+#     return data
+ 
 
 @router.get("/files")
 async def get_files(username: str = Query(...), role: str = Query(...)):
