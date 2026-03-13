@@ -1,12 +1,13 @@
 import pandas as pd
 from io import BytesIO
 import numpy as np
-from app.utils.db import analytics_collection
+from app.utils.db import get_db
 from datetime import datetime
 from fastapi import HTTPException
 
 
 async def process_data(file, username: str, role:str):
+    db = get_db()
 
     contents = await file.read()
     df = pd.read_csv(BytesIO(contents))
@@ -52,7 +53,7 @@ async def process_data(file, username: str, role:str):
     }
 
     # Check if file already exists
-    existing = await analytics_collection.find_one({
+    existing = await db.analytics_collection.find_one({
         "username": username,
         "filename": filename
     })
@@ -67,7 +68,7 @@ async def process_data(file, username: str, role:str):
         return "file name exist"
 
     # Count how many files user already has
-    file_count = await analytics_collection.count_documents({
+    file_count = await db.analytics_collection.count_documents({
         "username": username
     })
 
@@ -78,7 +79,7 @@ async def process_data(file, username: str, role:str):
         )
 
     # Insert new dataset
-    inserted = await analytics_collection.insert_one(result)
+    inserted = await db.analytics_collection.insert_one(result)
     result["_id"] = str(inserted.inserted_id)
 
     return result

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Request, Query
 from pydantic import BaseModel
-from app.utils.db import users_collection, analytics_collection 
+from app.utils.db import get_db
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
@@ -18,8 +18,9 @@ class LoginRequest(BaseModel):
 @router.post("/")
 @limiter.limit("5/minute")
 async def login(request: Request, data: LoginRequest): 
+    db = get_db()
 
-    user = await users_collection.find_one(
+    user = await db.users_collection.find_one(
         {"userName": data.userName}
     )
 
@@ -53,17 +54,18 @@ async def login(request: Request, data: LoginRequest):
 
 @router.get("/files")
 async def get_files(username: str = Query(...), role: str = Query(...)):
+    db = get_db()
 
     # Admin can see all files
     if role == "admin":
-        files = await analytics_collection.find(
+        files = await db.analytics_collection.find(
             {},
             {"filename": 1, "uploaded_at": 1, "username": 1, "role":1}
         ).to_list(100)
 
     # Normal user sees only their files
     else:
-        files = await analytics_collection.find(
+        files = await db.analytics_collection.find(
             {"username": username},
             {"filename": 1, "uploaded_at": 1, "role":1, "username": username}
         ).to_list(100)

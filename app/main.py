@@ -1,32 +1,57 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from app.routes.analytics import router as analytics_router
-from app.routes.createUser import router as createUser
-from app.routes.auth import router as login,  limiter
-from app.utils.db import client
-
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
-# SlowAPI imports
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.errors import RateLimitExceeded
 from slowapi import _rate_limit_exceeded_handler
 
+from app.api.v1.api import api_router
+from app.api.v1.routes.auth import limiter
+from app.utils.db import connect_to_mongo, close_mongo_connection
+from app.core.exceptions import (
+    AppException,
+    app_exception_handler,
+    http_exception_handler,
+    validation_exception_handler,
+    generic_exception_handler,
+)
 
-app = FastAPI()
 
-# attach limiter
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    mongo_client = connect_to_mongo()
+
+    try:
+        await mongo_client.admin.command("ping")
+        print("✅ MongoDB connected successfully")
+    except Exception as e:
+        print(f"❌ MongoDB connection failed: {e}")
+        raise e
+
+    yield
+
+    close_mongo_connection()
+    print("🔻 MongoDB connection closed")
+
+
+app = FastAPI(
+    title="Business Analytics API",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
 app.state.limiter = limiter
 
-# register error handler
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(AppException, app_exception_handler)
+app.add_exception_handler(StarletteHTTPException, http_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(Exception, generic_exception_handler)
 
-# add middleware
 app.add_middleware(SlowAPIMiddleware)
-
-
-app.include_router(analytics_router, prefix="/analytics")
-app.include_router(createUser, prefix="/createUser")
-app.include_router(login, prefix="/login")
 
 app.add_middleware(
     CORSMiddleware,
@@ -36,16 +61,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(api_router, prefix="/api/v1")
+
+
 @app.get("/")
-def root():
+async def root():
     return {"message": "Business Analytics API Running 🚀"}
-
-
-@app.on_event("startup")
-async def startup_db_check():
-    try:
-        await client.admin.command("ping")
-        print("✅ MongoDB connected successfully")
-    except Exception as e:
-        print(f"❌ MongoDB connection failed: {e}")
-        raise e

@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
-from app.utils.db import users_collection
+from app.utils.db import get_db
 
 router = APIRouter()
 
@@ -11,7 +11,8 @@ class UserCreate(BaseModel):
 
 @router.post("/")
 async def create_user(user: UserCreate):
+    db = get_db()
 
-    await users_collection.insert_one(user.model_dump())
+    await db.users_collection.insert_one(user.model_dump())
 
     return {"message": "User created successfully"}

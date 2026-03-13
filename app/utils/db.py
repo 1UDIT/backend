@@ -1,38 +1,47 @@
-import os
-import sys
-from motor.motor_asyncio import AsyncIOMotorClient
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+from pymongo.server_api import ServerApi
 from dotenv import load_dotenv
-from pymongo.errors import PyMongoError
+import os
 
-# Load environment variables
 load_dotenv()
 
-MONGO_URL = os.getenv("MONGO_URL")
-DB_NAME = os.getenv("DB_NAME")
+MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
+DB_NAME = os.getenv("DB_NAME", "business_analytics")
 
-# 🔴 1️⃣ Validate ENV variables 
+client: AsyncIOMotorClient | None = None
+db: AsyncIOMotorDatabase | None = None
 
-if not MONGO_URL:
-    print("❌ MONGO_URL is not set in .env file")
-    sys.exit(1)
 
-if not DB_NAME:
-    print("❌ DB_NAME is not set in .env file")
-    sys.exit(1)
+def connect_to_mongo() -> AsyncIOMotorClient:
+    global client, db
 
-try:
-    # 🔵 2️⃣ Create client
+    if not MONGO_URL:
+        raise RuntimeError("MONGO_URL is missing")
+    if not DB_NAME:
+        raise RuntimeError("DB_NAME is missing")
+
     client = AsyncIOMotorClient(
         MONGO_URL,
-        serverSelectionTimeoutMS=5000  # 5 seconds timeout
+        maxPoolSize=50,
+        minPoolSize=5,
+        maxIdleTimeMS=30000,
+        serverSelectionTimeoutMS=5000,
+        socketTimeoutMS=20000,
+        connectTimeoutMS=10000,
+        server_api=ServerApi("1"),
     )
 
     db = client[DB_NAME]
-    analytics_collection = db["analytics"]
-    users_collection = db["users"]
+    return client
 
-    print("✅ MongoDB connection initialized")
 
-except PyMongoError as e:
-    print(f"❌ MongoDB connection error: {e}")
-    sys.exit(1)
+def get_db() -> AsyncIOMotorDatabase:
+    if db is None:
+        raise RuntimeError("Database connection is not initialized")
+    return db
+
+
+def close_mongo_connection():
+    global client
+    if client:
+        client.close()
